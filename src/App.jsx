@@ -39,19 +39,35 @@ function App() {
     setLoading(true);
     setExplanation('');
     try {
-        const response = await fetch('/api/explain', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code, language }),
-        });
+      const response = await fetch('/api/explain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code, language }),
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const payload = isJson ? await response.json() : null;
+      const fallbackText = !isJson ? await response.text() : '';
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'API Error');
+        const message = payload?.error?.message || payload?.error || fallbackText || 'API Error';
+        throw new Error(message);
       }
-      const data = await response.json();
-      setExplanation(data.choices[0].message.content);
+
+      const content =
+        payload?.choices?.[0]?.message?.content ||
+        payload?.generated_text ||
+        payload?.[0]?.generated_text ||
+        '';
+
+      if (!content) {
+        throw new Error('Empty response from API');
+      }
+
+      setExplanation(content);
     } catch (error) {
       setExplanation(`❌ Error: ${error.message}`);
     } finally {
