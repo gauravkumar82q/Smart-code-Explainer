@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import fetch from 'node-fetch';
 
 const app = express();
 
@@ -11,14 +12,14 @@ app.use((req, res, next) => {
   next();
 });
 
-const HF_API_TOKEN = process.env.HF_API_TOKEN;
-const HF_MODEL = process.env.HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.2';
-const HF_API_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}`;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_MODEL = 'llama3-70b-8192';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 app.post('/api/explain', async (req, res) => {
   try {
-    if (!HF_API_TOKEN) {
-      return res.status(500).json({ error: 'Missing HF_API_TOKEN on server' });
+    if (!GROQ_API_KEY) {
+      return res.status(500).json({ error: 'Missing GROQ_API_KEY on server' });
     }
 
     const { code, language } = req.body || {};
@@ -33,56 +34,45 @@ app.post('/api/explain', async (req, res) => {
       String(code) +
       '\n\nExplain the code in plain English.';
 
-    const hfResponse = await fetch(HF_API_URL, {
+    const groqResponse = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${HF_API_TOKEN}`,
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
-        'X-Wait-For-Model': 'true',
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 400,
-          temperature: 0.2,
-        },
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant that explains code clearly and concisely.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 400,
+        temperature: 0.2,
       }),
     });
 
-    const contentType = hfResponse.headers.get('content-type') || '';
+    const contentType = groqResponse.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
-    const data = isJson ? await hfResponse.json() : await hfResponse.text();
+    const data = isJson ? await groqResponse.json() : await groqResponse.text();
 
-    if (!hfResponse.ok) {
+    if (!groqResponse.ok) {
       const errorMessage =
         (typeof data === 'object' && data && (data.error || data.message)) ||
         (typeof data === 'string' && data) ||
-        'Hugging Face API error';
-      console.log(`[HF] ${hfResponse.status} ${errorMessage}`);
-      const hint =
-        hfResponse.status === 404
-          ? 'Model not found or not supported. Check HF_MODEL.'
-          : '';
-      return res.status(hfResponse.status).json({
-        error: hint ? `${errorMessage} ${hint}`.trim() : errorMessage,
+        'Groq API error';
+      console.log(`[Groq] ${groqResponse.status} ${errorMessage}`);
+      return res.status(groqResponse.status).json({
+        error: errorMessage,
       });
     }
 
     let generated = '';
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      generated = data[0].generated_text;
-    } else if (typeof data === 'string') {
-      generated = data;
-    } else if (data?.generated_text) {
-      generated = data.generated_text;
-    }
-
-    if (generated.startsWith(prompt)) {
-      generated = generated.slice(prompt.length).trim();
+    if (data?.choices?.[0]?.message?.content) {
+      generated = data.choices[0].message.content;
     }
 
     if (!generated) {
-      return res.status(502).json({ error: 'Empty response from Hugging Face' });
+      return res.status(502).json({ error: 'Empty response from Groq API' });
     }
 
     return res.json({

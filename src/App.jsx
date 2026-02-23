@@ -5,8 +5,6 @@ import Editor from '@monaco-editor/react';
 import './App.css';
 
 
-// Removed CONFIG as we no longer need API_KEY and API_ENDPOINT
-
 
 function App() {
   const [code, setCode] = useState('// Paste your code here\nfunction helloWorld() {\n  console.log("Hello, World!");\n}\n');
@@ -53,15 +51,11 @@ function App() {
       const fallbackText = !isJson ? await response.text() : '';
 
       if (!response.ok) {
-        const message = payload?.error?.message || payload?.error || fallbackText || 'API Error';
+        const message = payload?.error || fallbackText || 'API Error';
         throw new Error(message);
       }
 
-      const content =
-        payload?.choices?.[0]?.message?.content ||
-        payload?.generated_text ||
-        payload?.[0]?.generated_text ||
-        '';
+      const content = payload?.choices?.[0]?.message?.content || '';
 
       if (!content) {
         throw new Error('Empty response from API');
