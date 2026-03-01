@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 });
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = 'llama3-70b-8192';
+const GROQ_MODEL = 'llama3-7';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 app.post('/api/explain', async (req, res) => {
