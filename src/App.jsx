@@ -7,8 +7,9 @@ import './App.css';
 
 
 function App() {
-  const [code, setCode] = useState('// Paste your code here\nfunction helloWorld() {\n  console.log("Hello, World!");\n}\n');
-  const [language, setLanguage] = useState('javascript');
+  const [code, setCode] = useState('// Paste your code here\npublic class HelloWorld {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n');
+  const [language, setLanguage] = useState('java');
+  
   const [explanation, setExplanation] = useState('');
   const [loading, setLoading] = useState(false);
   const [snippets, setSnippets] = useState([]);
